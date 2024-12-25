@@ -5,33 +5,29 @@ from typing import Union
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from requests import Response
-from requests.exceptions import ConnectionError
 from requests.sessions import Session
-from xinference_client.client.restful.restful_client import (
+from xinference_client.client.restful.restful_client import (  # type: ignore
     Client,
-    RESTfulChatglmCppChatModelHandle,
     RESTfulChatModelHandle,
     RESTfulEmbeddingModelHandle,
     RESTfulGenerateModelHandle,
     RESTfulRerankModelHandle,
 )
-from xinference_client.types import Embedding, EmbeddingData, EmbeddingUsage
+from xinference_client.types import Embedding, EmbeddingData, EmbeddingUsage  # type: ignore
 
 
 class MockXinferenceClass:
-    def get_chat_model(
-        self: Client, model_uid: str
-    ) -> Union[RESTfulChatglmCppChatModelHandle, RESTfulGenerateModelHandle, RESTfulChatModelHandle]:
+    def get_chat_model(self: Client, model_uid: str) -> Union[RESTfulGenerateModelHandle, RESTfulChatModelHandle]:
         if not re.match(r"https?:\/\/[^\s\/$.?#].[^\s]*$", self.base_url):
             raise RuntimeError("404 Not Found")
 
-        if "generate" == model_uid:
+        if model_uid == "generate":
             return RESTfulGenerateModelHandle(model_uid, base_url=self.base_url, auth_headers={})
-        if "chat" == model_uid:
+        if model_uid == "chat":
             return RESTfulChatModelHandle(model_uid, base_url=self.base_url, auth_headers={})
-        if "embedding" == model_uid:
+        if model_uid == "embedding":
             return RESTfulEmbeddingModelHandle(model_uid, base_url=self.base_url, auth_headers={})
-        if "rerank" == model_uid:
+        if model_uid == "rerank":
             return RESTfulRerankModelHandle(model_uid, base_url=self.base_url, auth_headers={})
         raise RuntimeError("404 Not Found")
 
@@ -42,7 +38,7 @@ class MockXinferenceClass:
             model_uid = url.split("/")[-1] or ""
             if not re.match(
                 r"[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}", model_uid
-            ) and model_uid not in ["generate", "chat", "embedding", "rerank"]:
+            ) and model_uid not in {"generate", "chat", "embedding", "rerank"}:
                 response.status_code = 404
                 response._content = b"{}"
                 return response
@@ -53,7 +49,7 @@ class MockXinferenceClass:
                 response._content = b"{}"
                 return response
 
-            if model_uid in ["generate", "chat"]:
+            if model_uid in {"generate", "chat"}:
                 response.status_code = 200
                 response._content = b"""{
                     "model_type": "LLM",

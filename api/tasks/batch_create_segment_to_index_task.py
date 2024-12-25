@@ -4,7 +4,7 @@ import time
 import uuid
 
 import click
-from celery import shared_task
+from celery import shared_task  # type: ignore
 from sqlalchemy import func
 
 from core.indexing_runner import IndexingRunner
@@ -57,13 +57,14 @@ def batch_create_segment_to_index_task(
                 model_type=ModelType.TEXT_EMBEDDING,
                 model=dataset.embedding_model,
             )
-
+        word_count_change = 0
+        segments_to_insert: list[str] = []  # Explicitly type hint the list as List[str]
         for segment in content:
-            content = segment["content"]
+            content_str = segment["content"]
             doc_id = str(uuid.uuid4())
-            segment_hash = helper.generate_text_hash(content)
+            segment_hash = helper.generate_text_hash(content_str)
             # calc embedding use tokens
-            tokens = embedding_model.get_text_embedding_num_tokens(texts=[content]) if embedding_model else 0
+            tokens = embedding_model.get_text_embedding_num_tokens(texts=[content_str]) if embedding_model else 0
             max_position = (
                 db.session.query(func.max(DocumentSegment.position))
                 .filter(DocumentSegment.document_id == dataset_document.id)
@@ -80,14 +81,20 @@ def batch_create_segment_to_index_task(
                 word_count=len(content),
                 tokens=tokens,
                 created_by=user_id,
-                indexing_at=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
+                indexing_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
                 status="completed",
-                completed_at=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
+                completed_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
             )
             if dataset_document.doc_form == "qa_model":
                 segment_document.answer = segment["answer"]
+                segment_document.word_count += len(segment["answer"])
+            word_count_change += segment_document.word_count
             db.session.add(segment_document)
             document_segments.append(segment_document)
+            segments_to_insert.append(str(segment))  # Cast to string if needed
+        # update document word count
+        dataset_document.word_count += word_count_change
+        db.session.add(dataset_document)
         # add index to db
         indexing_runner = IndexingRunner()
         indexing_runner.batch_add_segments(document_segments, dataset)
@@ -98,5 +105,5 @@ def batch_create_segment_to_index_task(
             click.style("Segment batch created job: {} latency: {}".format(job_id, end_at - start_at), fg="green")
         )
     except Exception as e:
-        logging.exception("Segments batch created index failed:{}".format(str(e)))
+        logging.exception("Segments batch created index failed")
         redis_client.setex(indexing_cache_key, 600, "error")

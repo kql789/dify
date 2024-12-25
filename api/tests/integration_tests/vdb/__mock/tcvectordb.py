@@ -4,16 +4,16 @@ from typing import Optional
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from requests.adapters import HTTPAdapter
-from tcvectordb import VectorDBClient
-from tcvectordb.model.database import Collection, Database
-from tcvectordb.model.document import Document, Filter
-from tcvectordb.model.enum import ReadConsistency
-from tcvectordb.model.index import Index
-from xinference_client.types import Embedding
+from tcvectordb import VectorDBClient  # type: ignore
+from tcvectordb.model.database import Collection, Database  # type: ignore
+from tcvectordb.model.document import Document, Filter  # type: ignore
+from tcvectordb.model.enum import ReadConsistency  # type: ignore
+from tcvectordb.model.index import Index  # type: ignore
+from xinference_client.types import Embedding  # type: ignore
 
 
 class MockTcvectordbClass:
-    def VectorDBClient(
+    def mock_vector_db_client(
         self,
         url=None,
         username="",
@@ -48,7 +48,7 @@ class MockTcvectordbClass:
         description: str,
         index: Index,
         embedding: Embedding = None,
-        timeout: float = None,
+        timeout: Optional[float] = None,
     ) -> Collection:
         return Collection(
             self,
@@ -97,9 +97,9 @@ class MockTcvectordbClass:
 
     def collection_delete(
         self,
-        document_ids: list[str] = None,
+        document_ids: Optional[list[str]] = None,
         filter: Filter = None,
-        timeout: float = None,
+        timeout: Optional[float] = None,
     ):
         return {"code": 0, "msg": "operation success"}
 
@@ -110,7 +110,7 @@ MOCK = os.getenv("MOCK_SWITCH", "false").lower() == "true"
 @pytest.fixture
 def setup_tcvectordb_mock(request, monkeypatch: MonkeyPatch):
     if MOCK:
-        monkeypatch.setattr(VectorDBClient, "__init__", MockTcvectordbClass.VectorDBClient)
+        monkeypatch.setattr(VectorDBClient, "__init__", MockTcvectordbClass.mock_vector_db_client)
         monkeypatch.setattr(VectorDBClient, "list_databases", MockTcvectordbClass.list_databases)
         monkeypatch.setattr(Database, "collection", MockTcvectordbClass.describe_collection)
         monkeypatch.setattr(Database, "list_collections", MockTcvectordbClass.list_collections)

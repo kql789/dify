@@ -6,6 +6,8 @@ import type {
   EnvironmentVariable,
   Node,
 } from '@/app/components/workflow/types'
+import type { TransferMethod } from '@/types/app'
+import type { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 
 export type NodeTracing = {
   id: string
@@ -18,17 +20,26 @@ export type NodeTracing = {
   process_data: any
   outputs?: any
   status: string
+  parallel_run_id?: string
   error?: string
   elapsed_time: number
-  execution_metadata: {
+  execution_metadata?: {
     total_tokens: number
     total_price: number
     currency: string
     iteration_id?: string
     iteration_index?: number
+    parallel_id?: string
+    parallel_start_node_id?: string
+    parent_parallel_id?: string
+    parent_parallel_start_node_id?: string
+    parallel_mode_run_id?: string
+    iteration_duration_map?: IterationDurationMap
+    error_strategy?: ErrorHandleTypeEnum
   }
   metadata: {
     iterator_length: number
+    iterator_index: number
   }
   created_at: number
   created_by: {
@@ -36,10 +47,17 @@ export type NodeTracing = {
     name: string
     email: string
   }
+  iterDurationMap?: IterationDurationMap
   finished_at: number
   extras?: any
   expand?: boolean // for UI
   details?: NodeTracing[][] // iteration detail
+  retryDetail?: NodeTracing[] // retry detail
+  parallel_id?: string
+  parallel_start_node_id?: string
+  parent_parallel_id?: string
+  parent_parallel_start_node_id?: string
+  retry_index?: number
 }
 
 export type FetchWorkflowDraftResponse = {
@@ -99,6 +117,7 @@ export type WorkflowFinishedResponse = {
       email: string
     }
     finished_at: number
+    files?: FileResponse[]
   }
 }
 
@@ -109,6 +128,8 @@ export type NodeStartedResponse = {
   data: {
     id: string
     node_id: string
+    iteration_id?: string
+    parallel_run_id?: string
     node_type: string
     index: number
     predecessor_node_id?: string
@@ -118,6 +139,17 @@ export type NodeStartedResponse = {
   }
 }
 
+export type FileResponse = {
+  related_id: string
+  extension: string
+  filename: string
+  size: number
+  mime_type: string
+  transfer_method: TransferMethod
+  type: string
+  url: string
+}
+
 export type NodeFinishedResponse = {
   task_id: string
   workflow_run_id: string
@@ -125,6 +157,7 @@ export type NodeFinishedResponse = {
   data: {
     id: string
     node_id: string
+    iteration_id?: string
     node_type: string
     index: number
     predecessor_node_id?: string
@@ -138,8 +171,16 @@ export type NodeFinishedResponse = {
       total_tokens: number
       total_price: number
       currency: string
+      parallel_id?: string
+      parallel_start_node_id?: string
+      iteration_index?: number
+      iteration_id?: string
+      parallel_mode_run_id: string
+      error_strategy?: ErrorHandleTypeEnum
     }
     created_at: number
+    files?: FileResponse[]
+    retry_index?: number
   }
 }
 
@@ -152,13 +193,15 @@ export type IterationStartedResponse = {
     node_id: string
     metadata: {
       iterator_length: number
+      iteration_id: string
+      iteration_index: number
     }
     created_at: number
     extras?: any
   }
 }
 
-export type IterationNextedResponse = {
+export type IterationNextResponse = {
   task_id: string
   workflow_run_id: string
   event: string
@@ -169,6 +212,13 @@ export type IterationNextedResponse = {
     output: any
     extras?: any
     created_at: number
+    parallel_mode_run_id: string
+    execution_metadata: {
+      parallel_id?: string
+      iteration_index: number
+      parallel_mode_run_id?: string
+    }
+    duration?: number
   }
 }
 
@@ -181,6 +231,39 @@ export type IterationFinishedResponse = {
     node_id: string
     outputs: any
     extras?: any
+    status: string
+    created_at: number
+    error: string
+    execution_metadata: {
+      parallel_id?: string
+    }
+  }
+}
+
+export type ParallelBranchStartedResponse = {
+  task_id: string
+  workflow_run_id: string
+  event: string
+  data: {
+    parallel_id: string
+    parallel_start_node_id: string
+    parent_parallel_id: string
+    parent_parallel_start_node_id: string
+    iteration_id?: string
+    created_at: number
+  }
+}
+
+export type ParallelBranchFinishedResponse = {
+  task_id: string
+  workflow_run_id: string
+  event: string
+  data: {
+    parallel_id: string
+    parallel_start_node_id: string
+    parent_parallel_id: string
+    parent_parallel_start_node_id: string
+    iteration_id?: string
     status: string
     created_at: number
     error: string
@@ -250,4 +333,10 @@ export type ConversationVariableResponse = {
   limit: number
   total: number
   page: number
+}
+
+export type IterationDurationMap = Record<string, number>
+
+export type WorkflowConfigResponse = {
+  parallel_depth_limit: number
 }

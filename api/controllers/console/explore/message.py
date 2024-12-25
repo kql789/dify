@@ -1,12 +1,11 @@
 import logging
 
-from flask_login import current_user
-from flask_restful import marshal_with, reqparse
-from flask_restful.inputs import int_range
+from flask_login import current_user  # type: ignore
+from flask_restful import marshal_with, reqparse  # type: ignore
+from flask_restful.inputs import int_range  # type: ignore
 from werkzeug.exceptions import InternalServerError, NotFound
 
 import services
-from controllers.console import api
 from controllers.console.app.error import (
     AppMoreLikeThisDisabledError,
     CompletionRequestError,
@@ -40,7 +39,7 @@ class MessageListApi(InstalledAppResource):
         app_model = installed_app.app
 
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT]:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
         parser = reqparse.RequestParser()
@@ -51,7 +50,7 @@ class MessageListApi(InstalledAppResource):
 
         try:
             return MessageService.pagination_by_first_id(
-                app_model, current_user, args["conversation_id"], args["first_id"], args["limit"]
+                app_model, current_user, args["conversation_id"], args["first_id"], args["limit"], "desc"
             )
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
@@ -70,7 +69,7 @@ class MessageFeedbackApi(InstalledAppResource):
         args = parser.parse_args()
 
         try:
-            MessageService.create_feedback(app_model, message_id, current_user, args["rating"])
+            MessageService.create_feedback(app_model, message_id, current_user, args.get("rating"), args.get("content"))
         except services.errors.message.MessageNotExistsError:
             raise NotFound("Message Not Exists.")
 
@@ -125,7 +124,7 @@ class MessageSuggestedQuestionApi(InstalledAppResource):
     def get(self, installed_app, message_id):
         app_model = installed_app.app
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT]:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
         message_id = str(message_id)
@@ -153,21 +152,3 @@ class MessageSuggestedQuestionApi(InstalledAppResource):
             raise InternalServerError()
 
         return {"data": questions}
-
-
-api.add_resource(MessageListApi, "/installed-apps/<uuid:installed_app_id>/messages", endpoint="installed_app_messages")
-api.add_resource(
-    MessageFeedbackApi,
-    "/installed-apps/<uuid:installed_app_id>/messages/<uuid:message_id>/feedbacks",
-    endpoint="installed_app_message_feedback",
-)
-api.add_resource(
-    MessageMoreLikeThisApi,
-    "/installed-apps/<uuid:installed_app_id>/messages/<uuid:message_id>/more-like-this",
-    endpoint="installed_app_more_like_this",
-)
-api.add_resource(
-    MessageSuggestedQuestionApi,
-    "/installed-apps/<uuid:installed_app_id>/messages/<uuid:message_id>/suggested-questions",
-    endpoint="installed_app_suggested_question",
-)

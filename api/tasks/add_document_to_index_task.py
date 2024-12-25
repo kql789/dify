@@ -3,7 +3,7 @@ import logging
 import time
 
 import click
-from celery import shared_task
+from celery import shared_task  # type: ignore
 from werkzeug.exceptions import NotFound
 
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
@@ -18,9 +18,9 @@ from models.dataset import DocumentSegment
 def add_document_to_index_task(dataset_document_id: str):
     """
     Async Add document to index
-    :param document_id:
+    :param dataset_document_id:
 
-    Usage: add_document_to_index.delay(document_id)
+    Usage: add_document_to_index.delay(dataset_document_id)
     """
     logging.info(click.style("Start add document to index: {}".format(dataset_document_id), fg="green"))
     start_at = time.perf_counter()
@@ -74,7 +74,7 @@ def add_document_to_index_task(dataset_document_id: str):
     except Exception as e:
         logging.exception("add document to index failed")
         dataset_document.enabled = False
-        dataset_document.disabled_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        dataset_document.disabled_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
         dataset_document.status = "error"
         dataset_document.error = str(e)
         db.session.commit()
